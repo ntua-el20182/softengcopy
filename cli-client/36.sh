@@ -12,7 +12,7 @@ read -p "Press any key to resume ..."
 read -p "Press any key to resume ..."
 ./se2436 healthcheck
 read -p "Press any key to resume ..."
-./se2436 admin --addpasses --source ./uploads/passes36.csv
+./se2436 admin --addpasses --source ./passes36.csv
 read -p "Press any key to resume ..."
 ./se2436 healthcheck
 read -p "Press any key to resume ..."
