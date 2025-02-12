@@ -6,7 +6,7 @@ import time
 import csv 
 
 # Διαβάζουμε το baseURL από το config.js
-config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config.js"))
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../front-end/config.js"))
 
 with open(config_path, "r", encoding="utf-8") as f:
     content = f.read()
