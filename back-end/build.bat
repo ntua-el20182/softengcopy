@@ -13,7 +13,6 @@ powershell -Command "(Get-Content package.json) -replace '\"main\": \"index.js\"
 echo ✅ Το package.json ενημερώθηκε με:
 echo    📌 name: api
 echo    📌 main: server.js
-echo    📌 author: Το Όνομά Σου <email@example.com>
 
 :: Εγκατάσταση dependencies
 echo 📌 Εγκατάσταση dependencies...
