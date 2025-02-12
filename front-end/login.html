@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PouPass - Login</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">PouPass</h1>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+        <div class="login-box">
+            <form id="login-form">
+                <label for="username">Όνομα Χρήστη</label>
+                <input type="text" id="username" name="username" placeholder="Συμπληρώστε το όνομα χρήστη" required>
+                
+                <label for="password">Κωδικός</label>
+                <input type="password" id="password" name="password" placeholder="Συμπληρώστε τον κωδικό" required>
+                
+                <button type="submit" id="submit-btn">Login</button>
+            </form>
+        </div>
+    </div>
+    <script type="module">
+        import { baseURL } from './config.js';
+        localStorage.setItem('baseURL', baseURL);
+        console.log(localStorage.getItem('baseURL'));
+    </script>
+    <script src="login.js"></script>
+</body>
+</html>

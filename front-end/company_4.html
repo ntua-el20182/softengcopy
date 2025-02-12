@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Side Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="company_4.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="company_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="company_1.html">Τρέχουσες Συναλλαγές</a></li>
+            <li><a href="company_2.html">Ιστορικό Συναλλαγών</a></li>
+            <li><a href="company_3.html">Στατιστικά Συναλλαγών</a></li>
+            <li><a href="company_4.html" class="active">Προσθήκη Διελεύσεων</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p>Τζόνι Μπόι</p>
+            <p>user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <div class="panel">
+        <h2>Οδηγίες</h2>
+        <p>Ανεβάστε το αρχείο CSV με τις διελεύσεις. Μπορείτε να σύρετε το αρχείο στην περιοχή ή να κάνετε κλικ για επιλογή.</p>
+        <div id="drop-area">
+            <p>Σύρετε και αποθέστε αρχεία εδώ ή κάντε κλικ</p>
+            <input type="file" id="file-input" accept=".csv" multiple hidden>
+            <div id="file-list"></div>
+        </div>
+        <button id="upload-button">Ανέβασμα</button> <!-- Κουμπί για ανέβασμα -->
+        </div>
+    </div>
+
+    <script>
+        // JavaScript για την εμφάνιση/απόκρυψη του κουτιού χρήστη
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script>  
+    <script>
+    const dropArea = document.getElementById("drop-area");
+    const fileInput = document.getElementById("file-input");
+    const fileList = document.getElementById("file-list");
+    const uploadButton = document.getElementById("upload-button"); // Προσθήκη κουμπιού ανέβασματος
+    let files = [];
+
+    dropArea.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", (event) => {
+        handleFiles(event.target.files);
+    });
+
+    dropArea.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropArea.classList.add("highlight");
+    });
+
+    dropArea.addEventListener("dragleave", () => {
+        dropArea.classList.remove("highlight");
+    });
+
+    dropArea.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropArea.classList.remove("highlight");
+        handleFiles(event.dataTransfer.files);
+    });
+
+    function handleFiles(selectedFiles) {
+        for (let file of selectedFiles) {
+            if (!file.name.toLowerCase().endsWith(".csv")) {
+                alert("Μόνο αρχεία CSV επιτρέπονται!");
+                continue; // Παραλείπει το μη έγκυρο αρχείο
+            }
+            files.push(file);
+        }
+        updateFileList();
+    }
+
+    function updateFileList() {
+        fileList.innerHTML = "";
+        files.forEach((file, index) => {
+            const fileItem = document.createElement("div");
+            fileItem.classList.add("file-item");
+
+            // Δημιουργία εικόνας εικονιδίου αρχείου
+            const fileIcon = document.createElement("img");
+            fileIcon.src = "csv.png"; // Σταθερό εικονίδιο CSV
+            fileIcon.classList.add("file-icon");
+
+            const fileName = document.createElement("span");
+            fileName.textContent = file.name;
+            fileName.classList.add("file-name");
+
+            const removeButton = document.createElement("button");
+            removeButton.textContent = "×";
+            removeButton.classList.add("remove-btn");
+            removeButton.addEventListener("click", () => {
+                files.splice(index, 1);
+                updateFileList();
+            });
+
+            fileItem.appendChild(fileIcon);
+            fileItem.appendChild(fileName);
+            fileItem.appendChild(removeButton);
+            fileList.appendChild(fileItem);
+        });
+    }
+
+    // Διαγραφή όλων των αρχείων με το κουμπί "Ανέβασμα"
+    uploadButton.addEventListener("click", () => {
+        if (files.length === 0) {
+            alert("Δεν υπάρχουν αρχεία για ανέβασμα!");
+            return;
+        }
+
+        // Εδώ μπορείς να προσθέσεις τη λογική ανεβάσματος (π.χ. AJAX request)
+
+        // Καθαρισμός λίστας αρχείων
+        files = [];
+        updateFileList();
+
+        // Εμφάνιση μηνύματος επιτυχίας
+        const successMessage = document.createElement("p");
+        successMessage.textContent = "Τα αρχεία ανέβηκαν με επιτυχία!";
+        successMessage.classList.add("success-message");
+
+        fileList.appendChild(successMessage);
+
+        // Εξαφάνιση μηνύματος μετά από 3 δευτερόλεπτα
+        setTimeout(() => successMessage.remove(), 3000);
+    });
+</script>
+</body>
+</html>

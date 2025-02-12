@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Στατιστικά</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="analyst_2.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="analyst_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="analyst_1.html">Στατιστικά Διελεύσεων ανά Σταθμό</a></li>
+            <li><a href="analyst_2.html" class="active">Στατιστικά Πομποδεκτών</a></li>
+            <li><a href="analyst_3.html">Στατιστικά Διελεύσεων ανά Λειτουργό</a></li>
+            <li><a href="analyst_4.html">Στατιστικά Διελεύσεων ανά Κατηγορία οχήματος</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <div class="stat-panel">
+            <div id="chart1" class="chart"></div>
+        </div>
+    </div>
+
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/sankey.js"></script>
+    <script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        function pie_chart(plot) {
+            const token = localStorage.getItem('authTokenLoc');
+            fetch(plot.endpoint, {
+                method: 'GET',
+                headers: {
+                    'X-OBSERVATORY-AUTH': token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())  // Μετατρέπει την απόκριση σε JSON
+            .then(data => {
+                const total = data.reduce((sum, item) => sum + item[plot.column2], 0);
+                const chartData = data.map(item => ({
+                    name: item[plot.column1],
+                    y: (item[plot.column2] / total) * 100, // Υπολογισμός ποσοστού
+                    absoluteValue: item[plot.column2] // Αποθηκεύουμε και την απόλυτη τιμή για χρήση στο tooltip αν χρειαστεί
+                }));
+
+                const colors = [
+                '#5E81AC',  // Deep Steel Blue  
+                '#88C0D0',  // Soft Arctic Cyan  
+                '#EBCB8B',  // Warm Golden Sand  
+                '#A3BE8C',  // Muted Forest Green  
+                '#D08770',  // Elegant Coral  
+                '#B48EAD',  // Dusky Mauve  
+                '#9D79BC',  // Rich Amethyst  
+                '#E5E9F0'   // Misty Pearl White  
+                ];
+
+
+                // Build the chart
+                Highcharts.chart(`${plot.container}`, {
+                    chart: {
+                        plotBackgroundColor: null,
+                        plotBorderWidth: null,
+                        plotShadow: false,
+                        type: 'pie'
+                    },
+                    title: { text: `${plot.title}`, align: 'left' },
+                    tooltip: { pointFormat: `<b>{point.absoluteValue} ${plot.type}</b> ({point.percentage:.1f}%)` },
+                    accessibility: { point: { valueSuffix: '%' } },
+                    plotOptions: {
+                        pie: {
+                            allowPointSelect: true,
+                            cursor: 'pointer',
+                            colors,
+                            borderRadius: 5,
+                            dataLabels: {
+                                enabled: true,
+                                format: `<b>{point.name}</b><br>{point.absoluteValue}`,
+                                distance: -50,
+                                filter: {
+                                    property: 'percentage',
+                                    operator: '>',
+                                    value: 4
+                                }
+                            }
+                        }
+                    },
+                    series: [{
+                        name: `${plot.type}`,
+                        data: chartData
+                    }]
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            tag_plot = { endpoint: localStorage.getItem('baseURL') + '/tags', title: "Ενεργοί πομποδέκτες ανά Λειτουργό", container: "chart1", column1: "op_name", column2: "tags", type: "πομποδέκτες" };
+            
+            pie_chart(tag_plot);
+        });
+    </script>
+
+    <script>
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+        
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const userData = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = userData.name;
+        document.getElementById('userEmail').textContent = userData.email;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

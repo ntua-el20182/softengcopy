@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Side Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="toll_statistics.css">
+</head>
+<body>
+    <!-- HTML Structure -->
+    <div class="content">
+        <div class="panel">
+            <!-- Για κάθε chart, προσθέτουμε έναν τίτλο πριν από την εικόνα -->
+            <div class="chart" id="chart1">
+                <div class="chart-title" id="title1">Διελεύσεις ανά ώρα</div>
+                <div class="chart-container" id="container1"></div>
+            </div>
+            <div class="chart" id="chart2">
+                <div class="chart-title" id="title2">Διελεύσεις ανά κατηγορία οχήματος</div>
+                <div class="chart-container" id="container2"></div>
+            </div>
+            <div class="chart" id="chart3">
+                <div class="chart-title" id="title3">Διελεύσεις ανά λειτουργό αυτοκινητόδρομου</div>
+                <div class="chart-container" id="container3"></div>
+            </div>
+            <div class="chart" id="chart4">
+                <div class="chart-title" id="title4">Διελεύσεις ανά κατεύθυνση</div>
+                <div class="chart-container" id="container4"></div>
+            </div>
+            <div class="chart" id="chart5">
+                <div class="chart-title" id="title5">Χρεώσεις ανά λειτουργό αυτοκινητόδρομου</div>
+                <div class="chart-container" id="container5"></div>
+            </div>
+        </div>
+        <button id="nextChartBtn">Επόμενο</button> <!-- Κουμπί για το επόμενο chart -->
+    </div>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/sankey.js"></script>
+<script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<script>
+    window.onload = function() {
+    const panel = document.querySelector('.panel');
+    const charts = document.querySelectorAll('.chart');
+    const nextChartBtn = document.getElementById('nextChartBtn');
+    
+    let currentChartIndex = 0;
+
+    // Αρχικά, κρύβουμε όλα τα charts
+    charts.forEach(chart => {
+        chart.style.display = 'none';
+    });
+
+    // Εμφανίζουμε το πρώτο chart
+    charts[currentChartIndex].style.display = 'block';
+
+    nextChartBtn.addEventListener('click', function() {
+        // Κρύβουμε το τρέχον chart
+        charts[currentChartIndex].style.display = 'none';
+        
+        // Αυξάνουμε το δείκτη για το επόμενο chart
+        currentChartIndex = (currentChartIndex + 1) % charts.length;
+
+        // Εμφανίζουμε το επόμενο chart
+        charts[currentChartIndex].style.display = 'block';
+    });
+
+    panel.classList.add('show'); // Προσθέτει την κλάση show όταν η σελίδα φορτώνει
+
+    // Παίρνουμε τα query parameters από το URL
+    const params = new URLSearchParams(window.location.search);
+    const toll_pk = params.get('toll_pk');
+    const name = params.get('name');
+
+    const nm= name.split(' ');
+    const loc= nm.slice(2);
+    const title = loc.join(' ');
+    if (name.endsWith('Μετωπικά ')) { document.title = `${title}`; }
+    else {document.title = `${name} ${params.get('dest')}`}
+    
+    if (toll_pk && name) {
+            hour_plot = { endpoint: localStorage.getItem('baseURL') + `/single_toll_per_hour/${toll_pk}/${name}`, container: "container1", column1: "hour", column2: "passes", type: "Διελεύσεις" };
+            cat_plot = { endpoint: localStorage.getItem('baseURL') + `/single_toll_per_cat/${toll_pk}/${name}`, container: "container2", column1: "vehicle_type", column2: "passes", type: "διελεύσεις" };
+            ops_plot = { endpoint: localStorage.getItem('baseURL') + `/single_toll_per_ops/${toll_pk}/${name}`, container: "container3", column1: "op_name", column2: "passes", type: "διελεύσεις" };
+            dest_plot = { endpoint: localStorage.getItem('baseURL') + `/single_toll_per_dest/${toll_pk}/${name}`, container: "container4", column1: "destination", column2: "passes", type: "Διελεύσεις" };
+            charge_plot = { endpoint: localStorage.getItem('baseURL')+ `/single_toll_charges/${toll_pk}/${name}`, container: "container5", column1: "op_name", column2: "debt", type: "Xρέωση" };
+
+            column_chart(hour_plot, sky = true);
+            pie_chart(cat_plot);
+            pie_chart(ops_plot);
+            bar_chart(dest_plot);
+            pie_chart(charge_plot, '€');
+    } else {
+        const errorMsg = document.createElement('p');
+        errorMsg.className = 'error';
+        errorMsg.textContent = 'Παρακαλώ δώστε έγκυρα toll_pk και name στα query parameters.';
+        document.getElementById('plot-container').appendChild(errorMsg);
+    }
+};
+
+const skycolors = ["#0D1B2A", "#102841", "#122E4A", "#153455", "#1A3B60", "#25456E", "#DAA49A", "#87CEEB",
+                   "#6EB5FF", "#5CA4EF", "#4A90E2", "#419DD9", "#38A1DB", "#6ABFF8", "#74C3F3", "#85D3F9",
+                   "#9CDAF2", "#E8A2A8", "#FF7860", "#D64C4C", "#8E5BA5", "#4F3D8A", "#362E5B", "#1D2436"];
+
+function pie_chart(plot, measurement='') {
+    const token = localStorage.getItem('authTokenLoc');
+    fetch(plot.endpoint, {
+        method: 'GET',
+        headers: {
+            'X-OBSERVATORY-AUTH': token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())  // Μετατρέπει την απόκριση σε JSON
+    .then(data => {
+        const total = data.reduce((sum, item) => sum + parseFloat(item[plot.column2]), 0);
+        const chartData = data.map(item => ({
+            name: item[plot.column1],
+            y: (parseFloat(item[plot.column2]) / total) * 100, // Υπολογισμός ποσοστού
+            absoluteValue: parseFloat(item[plot.column2]) // Αποθηκεύουμε και την απόλυτη τιμή για χρήση στο tooltip αν χρειαστεί
+        }));
+
+        const colors = Highcharts.getOptions().colors.map((c, i) =>
+            // Start out with a darkened base color (negative brighten), and end
+            // up with a much brighter color
+            Highcharts.color(Highcharts.getOptions().colors[0])
+                .brighten((i - 3) / 7)
+                .get()
+        );
+
+        // Build the chart
+        Highcharts.chart(`${plot.container}`, {
+            chart: {
+                plotBackgroundColor: null,
+                plotBorderWidth: null,
+                plotShadow: false,
+                type: 'pie'
+            },
+            title: null,
+            tooltip: { pointFormat: `<b>{point.absoluteValue}${measurement} ${plot.type}</b> ({point.percentage:.1f}%)` },
+            accessibility: { point: { valueSuffix: '%' } },
+            plotOptions: {
+                pie: {
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    colors,
+                    borderRadius: 5,
+                    dataLabels: {
+                        enabled: true,
+                        format: `<b>{point.name}</b><br>{point.absoluteValue}${measurement}`,
+                        distance: -50,
+                        filter: {
+                            property: 'percentage',
+                            operator: '>',
+                            value: 4
+                        }
+                    }
+                }
+            },
+            series: [{
+                name: `${plot.type}`,
+                data: chartData
+            }]
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching data:', error);
+    });
+}
+function column_chart(plot, sky = false) {
+    const token = localStorage.getItem('authTokenLoc');
+    fetch(plot.endpoint, {
+        method: 'GET',
+        headers: {
+            'X-OBSERVATORY-AUTH': token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const xdata = data.map(item => item[plot.column1]);
+        const y_tmp = data.map(item => item[plot.column2]);
+
+        // Αν το διάγραμμα αφορά ώρες της μέρας, κάθε στήλη έχει το κατάλληλο χρώμα
+        var ydata;
+        if (sky) {
+            ydata = y_tmp.map((value, index) => ({
+                y: value,
+                color: skycolors[index % skycolors.length]
+            }));
+        }
+        else {
+            ydata = y_tmp;
+        }
+
+        Highcharts.chart(`${plot.container}`, {
+            chart: { type: 'column' },
+            // colors: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#F3FF33'],
+            title: null,
+            subtitle: null,
+            xAxis: {
+                categories: xdata,
+                crosshair: true,
+                accessibility: {
+                    description: null
+                }
+            },
+            yAxis: {
+                min: 0,
+                title: {
+                    text: null
+                }
+            },
+            tooltip: {
+                valueSuffix: ''
+            },
+            plotOptions: {
+                column: {
+                    pointPadding: 0.2,
+                    borderWidth: 0
+                }
+            },
+            series: [{ name: `${plot.type}`, data: ydata }]
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching data:', error);
+    });
+}
+function bar_chart(plot) {
+    const token = localStorage.getItem('authTokenLoc');
+    fetch(plot.endpoint, {
+        method: 'GET',
+        headers: {
+            'X-OBSERVATORY-AUTH': token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())  // Μετατρέπει την απόκριση σε JSON
+    .then(data => {
+        const xdata = data.map(item => item[plot.column1]);
+        const ydata = data.map(item => item[plot.column2]);
+
+        Highcharts.chart(`${plot.container}`, {
+            chart: { type: 'bar' },
+            title: null,
+            subtitle: null,
+            xAxis: {
+                categories: xdata,
+                title: { text: null },
+                gridLineWidth: 1,
+                lineWidth: 0
+            },
+            yAxis: {
+                min: 0,
+                title: null,
+                labels: { overflow: 'justify' },
+                gridLineWidth: 0
+            },
+            tooltip: {
+                valueSuffix: ''
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: '50%',
+                    dataLabels: { enabled: true },
+                    groupPadding: 0.1
+                }
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'top',
+                x: -40,
+                y: 80,
+                floating: true,
+                borderWidth: 1,
+                backgroundColor: Highcharts.defaultOptions.legend.backgroundColor || '#FFFFFF',
+                shadow: true
+            },
+            credits: { enabled: false },
+            series: [{
+                name: `${plot.type}`,
+                data: ydata
+            }]
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching data:', error);
+    });
+}
+</script>
+</body>
+</html>

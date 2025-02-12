@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ιστορικό Συναλλαγών</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+    <link rel="stylesheet" href="company_2.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="company_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="company_1.html">Τρέχουσες Συναλλαγές</a></li>
+            <li><a href="company_2.html" class="active">Ιστορικό Συναλλαγών</a></li>
+            <li><a href="company_3.html">Στατιστικά Συναλλαγών</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    
+    <div class="content">
+        <div class="table-panel">
+                 <button class="filter-cell" id="showFilters">Εφαρμογή Φίλτρων</button>
+                 <div class="filter-dropdown">
+                    <select id="category-filter" name="category-filter">
+                        <option value="all" disabled selected hidden>Επιλέξτε είδος οφειλών</option>
+                        <option value="from_me">Οφειλές προς τρίτους</option>
+                        <option value="to_me">Οφειλές προς εμάς</option>
+                        <option value="all">Σύνολο οφειλών</option>
+                    </select>
+                    
+                    <input type="text" id="dateRange" name="dateRange" placeholder="Επιλέξτε εύρος ημερομηνιών">
+
+                    <label for="filter3">Επιλέξτε ένα εύρος τιμών:</label>
+                    <div class="range-slider-container" id="filter3">
+                        <div class="slider-values">
+                          <div class="value-min">0 €</div>
+                          <div class="value-max">1000+ €</div>
+                        </div>
+                        <div class="range-slider">
+                          <input type="range" id="rangeStart" min="0" max="1000" value="0">
+                          <input type="range" id="rangeEnd" min="0" max="1001" value="1000">
+                          <div class="range-track"></div>
+                        </div>
+                    </div>
+                      
+                    
+                    <label for="filter4">Εμπλεκόμενοι:</label>
+                    <form class="checkbox-form">
+                        <div class="checkbox-row">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox1" name="checkboxGroup" value="1">
+                                <label for="checkbox1">Αττική Οδός</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox2" name="checkboxGroup" value="3">
+                                <label for="checkbox2">Εγνατία Οδός</label>
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox3" name="checkboxGroup" value="2">
+                                <label for="checkbox3">Ολυμπία Οδός</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox4" name="checkboxGroup" value="6">
+                                <label for="checkbox4">Μορέας</label>
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox5" name="checkboxGroup" value="8">
+                                <label for="checkbox5">Αυτοκ. Αιγαίου</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox6" name="checkboxGroup" value="5">
+                                <label for="checkbox6">Κεντρική Οδός</label>
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox7" name="checkboxGroup" value="4">
+                                <label for="checkbox7">Νέα Οδός</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="checkbox8" name="checkboxGroup" value="7">
+                                <label for="checkbox8">Γέφυρα Α.Ε.</label>
+                            </div>
+                        </div>
+                    </form>
+
+                    <button class="my-button" id="applyFilters">Εφαρμογή Φίλτρων</button>
+                    <button class="my-button" id="clearFilters">Καθαρισμός</button>
+                    </div>
+            <table id="table_id" class="table">
+                <thead>
+                    <tr>
+                        <th>Οφειλέτης</th>
+                        <th>Πιστωτής</th>
+                        <th>Ποσό</th>
+                        <th>Ημερομηνία Δημιουργίας</th>
+                        <th>Ημερομηνία Πληρωμής</th>
+                    </tr>
+                </thead>
+                <tbody id="table_body"></tbody>
+            </table>
+            <div class="download-section">
+                <p>
+                    Κατεβάστε το ιστορικό <a href="downloads/history.csv" id="download-btn" class="download-link">εδώ</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="history.js"></script>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        document.getElementById("showFilters").addEventListener("click", function() {
+        var dropdown = document.querySelector(".filter-dropdown");
+        console.log("Dropdown clicked"); // Ελέγχουμε αν το κλικ ανιχνεύεται
+        dropdown.classList.toggle("show");  // Ενεργοποιεί ή απενεργοποιεί την κλάση 'show'
+        console.log(dropdown.classList); // Ελέγχουμε τις κλάσεις του dropdown
+    });
+    </script>
+
+    <script>  
+        // Ενεργοποίηση του Flatpickr για το πεδίο
+        flatpickr("#dateRange", {
+            mode: "range", // Ενεργοποιεί το εύρος ημερομηνιών
+            dateFormat: "Y-m-d", // Μορφή ημερομηνιών (π.χ. 2025-01-12)
+            locale: "el", // Ρυθμίσεις για ελληνικά, αν χρειάζεται
+        });
+    </script>
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+
+    </script> 
+    
+    <script>
+        const rangeStart = document.getElementById('rangeStart');
+        const rangeEnd = document.getElementById('rangeEnd');
+        const valueMin = document.querySelector('.value-min');
+        const valueMax = document.querySelector('.value-max');
+        const rangeTrack = document.querySelector('.range-track');
+
+        function updateValues() {
+            const minValue = parseInt(rangeStart.value);
+            const maxValue = parseInt(rangeEnd.value);
+
+            // Βεβαιώσου ότι οι τιμές δεν επικαλύπτονται
+            if (minValue >= maxValue) { rangeStart.value = maxValue - 1; }
+            if (maxValue <= minValue) { rangeEnd.value = minValue + 1; }
+
+            // Ενημέρωση εμφανιζόμενων τιμών
+            valueMin.textContent = `${rangeStart.value} €`;
+            valueMax.textContent = `${rangeEnd.value} €`;
+
+            // Ενημέρωση γραμμής εύρους
+            const percentStart = ((rangeStart.value - rangeStart.min) / (rangeStart.max - rangeStart.min)) * 100;
+            const percentEnd = ((rangeEnd.value - rangeEnd.min) / (rangeEnd.max - rangeEnd.min)) * 100;
+
+            rangeTrack.style.left = `${percentStart}%`;
+            rangeTrack.style.right = `${100 - percentEnd}%`;
+        }
+
+        // Ενημέρωση τιμών κατά την αλλαγή
+        rangeStart.addEventListener('input', updateValues);
+        rangeEnd.addEventListener('input', updateValues);
+
+        // Ενημέρωση αρχικών τιμών
+        updateValues();
+    </script>
+    <script>
+        // Επιλογή του κουμπιού και του dropdown
+        const button = document.querySelector('.my-button');
+        const dropdown = document.querySelector('.filter-dropdown');
+    
+        // Προσθήκη event listener στο κουμπί για το click event
+        button.addEventListener('click', () => {
+            // Αν η κλάση "show" είναι ενεργή, την αφαιρούμε για να κλείσουμε το dropdown
+            dropdown.classList.toggle('show');
+        });
+    </script>
+    <script>
+        const token = sessionStorage.getItem('authToken');
+        
+        // Δυναμική αρχικοποίηση του εύρους τιμών
+        fetch(localStorage.getItem('baseURL') + '/max_debt', {
+            method: 'GET',
+            headers: {
+                'X-OBSERVATORY-AUTH': token,
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Unauthorized');
+            }
+            return response.json();
+        }).then(data => {
+            document.getElementById('rangeEnd').value = Math.ceil(data.max);
+            document.getElementById('rangeEnd').max = Math.ceil(data.max);
+            document.getElementById('rangeStart').max = Math.ceil(data.max);
+            document.querySelector('.value-max').textContent = `${rangeEnd.value} €`;
+        })
+        .catch(error => {
+            console.error(error);
+            document.getElementById('rangeEnd').value = 1;
+            document.getElementById('rangeEnd').max = 1;
+            document.getElementById('rangeStart').max = 1;
+            document.querySelector('.value-max').textContent = `${rangeEnd.value} €`;
+        });
+
+        // Clear function
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            // Clear select
+            document.getElementById('category-filter').selectedIndex = 0;  // Reset to first option
+
+            // Clear text input
+            document.getElementById('dateRange').value = '';
+
+            // Clear range inputs
+            document.getElementById('rangeStart').value = 0;
+            fetch(localStorage.getItem('baseURL') + '/max_debt', {
+                method: 'GET',
+                headers: {
+                    'X-OBSERVATORY-AUTH': token,
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (!response.ok) { throw new Error('Unauthorized'); }
+                return response.json();
+            }).then(data => {
+                document.getElementById('rangeEnd').value = Math.ceil(data.max);
+                document.querySelector('.value-max').textContent = `${rangeEnd.value} €`;
+            }).catch(error => {
+                console.error(error);
+                document.getElementById('rangeEnd').value = 1;
+                document.querySelector('.value-max').textContent = `${rangeEnd.value} €`;
+            });
+            const valueMin = document.querySelector('.value-min');
+            valueMin.textContent = `${rangeStart.value} €`;
+            const rangeTrack = document.querySelector('.range-track');
+            rangeTrack.style.left = `0%`;
+            rangeTrack.style.right = `0%`;
+
+            // Clear checkboxes
+            var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = false;
+            });
+        });
+    </script>
+    <script>
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+        
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const userData = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = userData.name;
+        document.getElementById('userEmail').textContent = userData.email;
+    </script>
+</body>
+</html>

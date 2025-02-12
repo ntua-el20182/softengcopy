@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Στατιστικά</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="analyst_1.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="analyst_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="analyst_1.html" class = 'active'>Στατιστικά Διελεύσεων ανά Σταθμό</a></li>
+            <li><a href="analyst_2.html">Στατιστικά Πομποδεκτών</a></li>
+            <li><a href="analyst_3.html">Στατιστικά Διελεύσεων ανά Λειτουργό</a></li>
+            <li><a href="analyst_4.html">Στατιστικά Διελεύσεων ανά Κατηγορία οχήματος</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <div class="stat-panel">
+            <button class="filter-cell" id="showFilters">Εφαρμογή Φίλτρου</button>
+            <div class="filter-dropdown">
+                <input type="text" id="dateRange" name="dateRange" placeholder="Επιλέξτε εύρος ημερομηνιών">
+                <button class="my-button" id="applyFilters">Εφαρμογή Φίλτρου</button>
+                <button class="my-button" id="clearFilters">Καθαρισμός</button>
+            </div>
+            <div>
+                    <div id="chart1" class="chart"></div>
+                    <div id="chart2" class="chart"></div>
+                    <div id="chart3" class="chart"></div>
+                    <div id="chart4" class="chart"></div>
+                    <div id="chart5" class="chart"></div>
+                    <div id="chart6" class="chart"></div>
+                    <div id="chart7" class="chart"></div>
+                    <div id="chart8" class="chart"></div>
+            </div>
+            <button id="nextChartBtn">Επόμενο</button> <!-- Κουμπί για το επόμενο chart -->
+        </div>
+    </div>
+
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/sankey.js"></script>
+    <script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        function stacked_col_chart(plot) {
+            const token = localStorage.getItem('authTokenLoc');
+            const customColors = [
+                '#5E81AC',  // Deep Steel Blue  
+                '#88C0D0',  // Soft Arctic Cyan  
+                '#EBCB8B',  // Warm Golden Sand  
+                '#A3BE8C',  // Muted Forest Green  
+                '#D08770',  // Elegant Coral  
+                '#B48EAD',  // Dusky Mauve  
+                '#9D79BC',  // Rich Amethyst  
+                '#E5E9F0'   // Misty Pearl White  
+                ];
+            fetch(plot.endpoint, {
+                method: 'GET',
+                headers: {
+                    'X-OBSERVATORY-AUTH': token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())  // Μετατρέπει την απόκριση σε JSON
+            .then(data => {
+                // Βρίσκουμε όλες τις μοναδικές εταιρείες (op_name) και κατηγορίες (category)
+                const uniqueCompanies = [...new Set(Object.keys(data))]; // Όλες οι εταιρείες
+                const uniqueCategories = [...new Set(Object.values(data).flatMap(obj => Object.keys(obj)))]; // Όλες οι κατηγορίες
+
+                // Δημιουργούμε αντικείμενο με προεπιλεγμένες τιμές 0 για κάθε κατηγορία σε κάθε εταιρεία
+                const structuredData = uniqueCompanies.map(company => {
+                    return {
+                        name: company,
+                        categories: uniqueCategories.map(category => data[company][category] || 0) // Αν δεν υπάρχει τιμή, βάζουμε 0
+                    };
+                });
+
+                // Δημιουργούμε τα series με βάση τις κατηγορίες
+                const seriesData = uniqueCategories.map((category, index) => {
+                    return {
+                        name: category.replace(/^Cat(\d+)$/, "Κατηγορία $1"),
+                        data: structuredData.map(entry => entry.categories[index])
+                    };
+                });
+
+                Highcharts.chart(`${plot.container}`, {
+                    colors: customColors,
+                    chart: {
+                        type: 'column'
+                    },
+                    title: {
+                        text: `${plot.title}`,
+                        align: 'left'
+                    },
+                    xAxis: {
+                        categories: uniqueCompanies 
+                    },
+                    yAxis: {
+                        min: 0,
+                        title: { text: `${plot.yaxis}` },
+                        stackLabels: { enabled: true }
+                    },
+                    legend: {
+                        layout: 'vertical',    // Κάθετη διάταξη
+                        align: 'right',        // Στοίχιση στα δεξιά
+                        verticalAlign: 'middle' // Τοποθέτηση στο μέσο του ύψους του chart
+                    },
+                    tooltip: {
+                        headerFormat: '<b>{category}</b><br/>',
+                        pointFormat: '{series.name}: {point.y} Διελεύσεις'
+                    },
+                    plotOptions: {
+                        column: {
+                            stacking: 'normal',
+                            dataLabels: { enabled: false }
+                        }
+                    },
+                    series: seriesData 
+                });
+
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            NAO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/1/default', container: "chart1", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Αττική Οδό", yaxis: "Διελεύσεις" };
+            OO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/2/default', container: "chart2", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Ολύμπια Οδό", yaxis: "Διελεύσεις" };
+            EG_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/3/default', container: "chart3", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Εγνατία Οδό", yaxis: "Διελεύσεις" };
+            NO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/4/default', container: "chart4", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Νέο Οδό", yaxis: "Διελεύσεις" };
+            KO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/5/default', container: "chart5", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Κεντρική Οδό", yaxis: "Διελεύσεις" };
+            MO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/6/default', container: "chart6", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Μορέα", yaxis: "Διελεύσεις" };
+            GE_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/7/default', container: "chart7", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Γέφυρα Α.Ε", yaxis: "Διελεύσεις" };
+            AM_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/8/default', container: "chart8", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Αυτοκινητόδρομου Αιγαίου", yaxis: "Διελεύσεις" };
+            
+            stacked_col_chart(NAO_plot);
+            stacked_col_chart(OO_plot);
+            stacked_col_chart(EG_plot);
+            stacked_col_chart(NO_plot);
+            stacked_col_chart(KO_plot);
+            stacked_col_chart(MO_plot);
+            stacked_col_chart(GE_plot);
+            stacked_col_chart(AM_plot);
+
+        });
+    </script>
+
+    <script>
+        document.getElementById("showFilters").addEventListener("click", function() {
+            var dropdown = document.querySelector(".filter-dropdown");
+            console.log("Dropdown clicked"); // Ελέγχουμε αν το κλικ ανιχνεύεται
+            dropdown.classList.toggle("show");  // Ενεργοποιεί ή απενεργοποιεί την κλάση 'show'
+            console.log(dropdown.classList); // Ελέγχουμε τις κλάσεις του dropdown
+        });
+
+        // Ενεργοποίηση του Flatpickr για το πεδίο
+        flatpickr("#dateRange", {
+            mode: "range", // Ενεργοποιεί το εύρος ημερομηνιών
+            dateFormat: "Y-m-d", // Μορφή ημερομηνιών (π.χ. 2025-01-12)
+            locale: "el", // Ρυθμίσεις για ελληνικά, αν χρειάζεται
+        });
+
+        document.getElementById('applyFilters').addEventListener('click', () => {
+            const charts = document.querySelectorAll('.chart');
+            const nextChartBtn = document.getElementById('nextChartBtn');
+
+            currentChartIndex = 0;
+            // Αρχικά, κρύβουμε όλα τα charts
+            charts.forEach(chart => {
+                chart.style.display = 'none';
+            });
+
+            // Εμφανίζουμε το πρώτο chart
+            charts[currentChartIndex].style.display = 'block';
+
+            const dateRange = document.getElementById('dateRange').value.
+                                    split(" to ").map(date => date.replace(/-/g, "")).join("-") || "default";
+
+                                    NAO_plot = { endpoint: localStorage.getItem('baseURL') + '/allTollPasses/1/default', container: "chart1", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Αττική Οδό", yaxis: "Διελεύσεις" };
+                                    OO_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/2/${dateRange}`, container: "chart2", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Ολύμπια Οδό", yaxis: "Διελεύσεις" };
+                                    EG_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/3/${dateRange}`, container: "chart3", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Εγνατία Οδό", yaxis: "Διελεύσεις" };
+                                    NO_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/4/${dateRange}`, container: "chart4", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Νέο Οδό", yaxis: "Διελεύσεις" };
+                                    KO_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/5/${dateRange}`, container: "chart5", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Κεντρική Οδό", yaxis: "Διελεύσεις" };
+                                    MO_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/6/${dateRange}`, container: "chart6", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Μορέα", yaxis: "Διελεύσεις" };
+                                    GE_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/7/${dateRange}`, container: "chart7", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Γέφυρα Α.Ε", yaxis: "Διελεύσεις" };
+                                    AM_plot = { endpoint: localStorage.getItem('baseURL') + `/allTollPasses/8/${dateRange}`, container: "chart8", title: "Διελεύσεις ανά Λειτουργό και ανά κατηγορία για Αυτοκινητόδρομου Αιγαίου", yaxis: "Διελεύσεις" };
+                                    
+                                    stacked_col_chart(NAO_plot);
+                                    stacked_col_chart(OO_plot);
+                                    stacked_col_chart(EG_plot);
+                                    stacked_col_chart(NO_plot);
+                                    stacked_col_chart(KO_plot);
+                                    stacked_col_chart(MO_plot);
+                                    stacked_col_chart(GE_plot);
+                                    stacked_col_chart(AM_plot);
+        });
+
+        // Clear function
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            document.getElementById('dateRange').value = '';
+        });
+    </script>
+
+    <script>
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+        
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const userData = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = userData.name;
+        document.getElementById('userEmail').textContent = userData.email;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script> 
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const charts = document.querySelectorAll('.chart');
+            const nextChartBtn = document.getElementById('nextChartBtn');
+
+            let currentChartIndex = 0;
+            // Αρχικά, κρύβουμε όλα τα charts
+            charts.forEach(chart => {
+                chart.style.display = 'none';
+            });
+
+            // Εμφανίζουμε το πρώτο chart
+            charts[currentChartIndex].style.display = 'block';
+
+            nextChartBtn.addEventListener('click', function() {
+                // Κρύβουμε το τρέχον chart
+                charts[currentChartIndex].style.display = 'none';
+                
+                // Αυξάνουμε το δείκτη για το επόμενο chart
+                currentChartIndex = (currentChartIndex + 1) % charts.length;
+
+                // Εμφανίζουμε το επόμενο chart
+                charts[currentChartIndex].style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

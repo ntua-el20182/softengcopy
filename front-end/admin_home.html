@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σελίδα Διαχειριστή</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin_home.css">
+</head>
+<body>
+
+
+    <div class="panel">
+        <h2>Οδηγίες</h2>
+        <p>Ανεβάστε το αρχείο CSV με τις διελεύσεις. Μπορείτε να σύρετε το αρχείο στην περιοχή ή να κάνετε κλικ για επιλογή.</p>
+        <div id="drop-area">
+            <p>Σύρετε και αποθέστε αρχεία εδώ ή κάντε κλικ</p>
+            <input type="file" id="file-input" accept=".csv" multiple hidden>
+            <div id="file-list"></div>
+        </div>
+        <button id="upload-button">Ανέβασμα</button> <!-- Κουμπί για ανέβασμα -->
+    </div>
+
+    <div class="top-right-buttons">
+        <button id="logoutButton">Αποσύνδεση</button>
+        <button id="showStateButton">Κατάσταση βάσης</button>
+    </div>
+
+    <div class="user-box" id="userBox">    
+            <div id="stateContent">
+                <p><strong>Κατάσταση:</strong> <span id="status"></span></p>
+                <p><strong>Σύνδεση με DB:</strong> <span id="dbconnection"></span></p>
+                <p><strong>Αριθμός διοδίων:</strong> <span id="n_stations"></span></p>
+                <p><strong>Αριθμός tags:</strong> <span id="n_tags"></span></p>
+                <p><strong>Αριθμός διελεύσεων:</strong> <span id="n_passes"></p>
+            </div>
+    </div>
+
+    <div class="account_panel">
+        <div class="account_panel">
+            <h2>Δημιουργία Νέου Χρήστη</h2>
+            <form id="user-form">
+                <label for="name">Όνομα:</label>
+                <input type="text" id="name" required>
+                
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+                
+                <label for="password">Κωδικός:</label>
+                <input type="password" id="password" required>
+                
+                <label for="role">Ρόλος:</label>
+                <select id="role" required>
+                    <option value="" selected disabled>Επιλέξτε ρόλο</option>
+                    <option value="op_user">Λειτουργός Αυτοκινητόδρομου</option>
+                    <option value="data_analyst">Ερευνητής</option>
+                </select>
+
+                <div id="operator-fields" style="display: none;">
+                    <select id="operator-menu" name="operator-menu">
+                        <option value="" disabled selected hidden>Επιλέξτε Λειτουργό</option>
+                        <option value="1">Αττική Οδός</option>
+                        <option value="2">Ολυμπία Οδός</option>
+                        <option value="3">Εγνατία Οδός Α.Ε.</option>
+                        <option value="4">Νέα Οδός</option>
+                        <option value="5">Κεντρική Οδός</option>
+                        <option value="6">Μορέας</option>
+                        <option value="7">Γέφυρα Α.Ε.</option>
+                        <option value="8">Αυτοκινητόδρομος Αιγαίου</option>
+                    </select>
+                </div>
+                
+                <label for="email">Email:</label>
+                <input type="email" id="email" required>
+                
+                <button type="submit">Δημιουργία Χρήστη</button>
+            </form>
+            <div id="user-message"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("role").addEventListener("change", function() {
+            const operatorFields = document.getElementById("operator-fields");
+            if (this.value === "op_user") {
+                operatorFields.style.display = "block";
+            } else {
+                operatorFields.style.display = "none";
+            }
+        });
+    
+        document.getElementById("user-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const userData = {
+                name: document.getElementById("name").value,
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value,
+                role: document.getElementById("role").value,
+                email: document.getElementById("email").value,
+                op_primaryKey: document.getElementById("role").value === "op_user" ? document.getElementById("operator-menu").value : null
+            };
+            
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/admin/new_user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-OBSERVATORY-AUTH': token
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const userMessage = document.getElementById("user-message");
+                if (data.error) {
+                    userMessage.textContent = data.error;
+                    userMessage.style.color = "red";
+                } else {
+                    userMessage.textContent = data.message;
+                    userMessage.style.color = "green";
+                }
+                userMessage.style.display = "block"; // Ensure the message is visible
+
+                // Hide the message after 3 seconds
+                setTimeout(() => { userMessage.style.display = "none"; }, 3000);
+                this.reset();
+                document.getElementById("operator-fields").style.display = "none";
+            })
+            
+            .catch(error => {
+                console.error('Error:', error);
+                const userMessage = document.getElementById("user-message");
+                userMessage.textContent = 'Σφάλμα κατά την αποστολή των δεδομένων!';
+                userMessage.style.color = "red";
+                userMessage.style.display = "block"; // Ensure the message is visible
+
+                // Hide the message after 3 seconds
+                setTimeout(() => { userMessage.style.display = "none"; }, 3000);
+        });
+    });
+    </script>
+
+    <script>
+        const showStateButton = document.getElementById('showStateButton');
+
+        showStateButton.addEventListener('click', () => {
+            if (statePopup.style.display === 'block') {
+                statePopup.style.display = 'none';
+            } else {
+                const token = sessionStorage.getItem('authToken');
+                fetch(localStorage.getItem('baseURL') + '/admin/healthcheck', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-OBSERVATORY-AUTH': token
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('status').textContent = data.status;
+                        document.getElementById('dbconnection').textContent = data.dbconnection;
+                        document.getElementById('n_stations').textContent = data.n_stations;
+                        document.getElementById('n_tags').textContent = data.n_tags;
+                        document.getElementById('n_passes').textContent = data.n_passes;
+                        statePopup.style.display = 'block';
+                    })
+                    .catch(error => {
+                        document.getElementById('status').textContent = 'Error fetching data';
+                        document.getElementById('dbconnection').textContent = '';
+                        document.getElementById('n_stations').textContent = '';
+                        document.getElementById('n_tags').textContent = '';
+                        document.getElementById('n_passes').textContent = '';
+                        statePopup.style.display = 'block';
+                    });
+            }
+        });
+    </script>
+
+    <script>
+        const statePopup = document.getElementById('userBox');
+
+        // Κλείσιμο όταν πατηθεί εκτός του κουτιού
+        window.addEventListener('click', (event) => {
+            if (event.target === statePopup) {
+                statePopup.style.display = 'none';
+            }
+        });
+
+        function hideStatePopup() {
+            statePopup.classList.add('hide-user-box'); // Προσθήκη εφέ εξαφάνισης
+
+            setTimeout(() => {
+                statePopup.style.display = 'none'; // Απόκρυψη μετά το animation
+                statePopup.classList.remove('hide-user-box'); // Αφαίρεση για επόμενη χρήση
+            }, 500); // 0.5s = διάρκεια του animation
+        }
+
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        const dropArea = document.getElementById("drop-area");
+        const fileInput = document.getElementById("file-input");
+        const fileList = document.getElementById("file-list");
+        const uploadButton = document.getElementById("upload-button"); // Προσθήκη κουμπιού ανέβασματος
+        let files = [];
+    
+        dropArea.addEventListener("click", () => fileInput.click());
+    
+        fileInput.addEventListener("change", (event) => {
+            handleFiles(event.target.files);
+        });
+    
+        dropArea.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            dropArea.classList.add("highlight");
+        });
+    
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.classList.remove("highlight");
+        });
+    
+        dropArea.addEventListener("drop", (event) => {
+            event.preventDefault();
+            dropArea.classList.remove("highlight");
+            handleFiles(event.dataTransfer.files);
+        });
+    
+        function handleFiles(selectedFiles) {
+            for (let file of selectedFiles) {
+                if (!file.name.toLowerCase().endsWith(".csv")) {
+                    alert("Μόνο αρχεία CSV επιτρέπονται!");
+                    continue; // Παραλείπει το μη έγκυρο αρχείο
+                }
+                files.push(file);
+            }
+            updateFileList();
+        }
+    
+        function updateFileList() {
+            fileList.innerHTML = "";
+            files.forEach((file, index) => {
+                const fileItem = document.createElement("div");
+                fileItem.classList.add("file-item");
+    
+                // Δημιουργία εικόνας εικονιδίου αρχείου
+                const fileIcon = document.createElement("img");
+                fileIcon.src = "csv.png"; // Σταθερό εικονίδιο CSV
+                fileIcon.classList.add("file-icon");
+    
+                const fileName = document.createElement("span");
+                fileName.textContent = file.name;
+                fileName.classList.add("file-name");
+    
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "×";
+                removeButton.classList.add("remove-btn");
+                removeButton.addEventListener("click", () => {
+                    files.splice(index, 1);
+                    event.stopPropagation(); // Prevent triggering the file input
+                    updateFileList();
+                });
+    
+                fileItem.appendChild(fileIcon);
+                fileItem.appendChild(fileName);
+                fileItem.appendChild(removeButton);
+                fileList.appendChild(fileItem);
+            });
+        }
+    
+        // Διαγραφή όλων των αρχείων με το κουμπί "Ανέβασμα"
+        uploadButton.addEventListener("click", async () => {
+        if (files.length === 0) {
+            alert("Δεν υπάρχουν αρχεία για ανέβασμα!");
+            return;
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            const formData = new FormData();
+            formData.append("file", files[i]); // Αποστολή κάθε αρχείου με το ίδιο key που περιμένει το API
+
+            try {
+                const token = sessionStorage.getItem('authToken');
+                const response = await fetch(localStorage.getItem('baseURL') + '/admin/addpasses', {
+                    method: 'POST',
+                    headers: {
+                        'X-OBSERVATORY-AUTH': token
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Επιτυχία: Το αρχείο ${files[i].name} ανέβηκε.`);
+                } else {
+                    console.error(`Σφάλμα με το αρχείο ${files[i].name}:`, data.error);
+                    alert(`Αποτυχία αποστολής του αρχείου ${files[i].name}`);
+                }
+            } catch (error) {
+                console.error(`Σφάλμα δικτύου με το αρχείο ${files[i].name}:`, error);
+                alert(`Αποτυχία αποστολής του αρχείου ${files[i].name}`);
+            }
+        }
+
+        // Καθαρισμός λίστας αρχείων
+        files = [];
+        updateFileList();
+
+    });
+
+    </script>
+</body>
+</html>
