@@ -44,10 +44,10 @@ db.connect((err) => {
 });
 
 // Ρυθμίσεις για στατική εξυπηρέτηση αρχείων
-app.use(express.static(path.join(__dirname, '..'))); // Ανάλογα με τη δομή του φακέλου σου
+app.use(express.static(path.join(__dirname, '../front-end'))); // Ανάλογα με τη δομή του φακέλου σου
 // Ορισμός διαδρομής για την αρχική σελίδα
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'login.html')); // Δηλώνει το αρχείο login.html
+    res.sendFile(path.join(__dirname, '../front-end', 'login.html')); // Δηλώνει το αρχείο login.html
 });
 
 const authenticate = (req, res, next) => {
