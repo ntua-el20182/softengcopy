@@ -812,6 +812,15 @@ program
     printResult(res);
   });
 
+program
+  .arguments('<command>')
+  .description('Άγνωστη εντολή')
+  .action((cmd) => {
+    console.error(`Σφάλμα: Η εντολή "${cmd}" δεν είναι έγκυρη.`);
+    printHelp(); // Εμφάνιση διαθέσιμων εντολών
+    process.exit(1);
+  });
+
 // -----------------------------------------------------------
 program.parse(process.argv);
 
