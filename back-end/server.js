@@ -30,7 +30,7 @@ const SECRET_KEY = 'your_secret_key';
 const db = mysql.createConnection({
     host: 'localhost',       // ή '127.0.0.1'
     user: 'root',            // Το όνομα χρήστη της MySQL
-    password: '1987aliceC',  // Ο κωδικός χρήστη της MySQL
+    password: '--',  // Ο κωδικός χρήστη της MySQL
     database: 'toll_interoperability',        // Το όνομα της βάσης δεδομένων
 });
 
