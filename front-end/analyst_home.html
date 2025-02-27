@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Αρχική Σελίδα</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="analyst_home.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="analyst_home.html" class="active">Αρχική Σελίδα</a></li>
+            <li><a href="analyst_1.html">Στατιστικά Διελεύσεων ανά Σταθμό</a></li>
+            <li><a href="analyst_2.html">Στατιστικά Πομποδεκτών</a></li>
+            <li><a href="analyst_3.html">Στατιστικά Διελεύσεων ανά Λειτουργό</a></li>
+            <li><a href="analyst_4.html">Στατιστικά Διελεύσεων ανά Κατηγορία οχήματος</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <div class="map-container">
+            <iframe src="map.html" class="map-frame"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        // JavaScript για την εμφάνιση/απόκρυψη του κουτιού χρήστη
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script>  
+    <script>
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const token = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = token.name;
+        document.getElementById('userEmail').textContent = token.email;
+    </script>
+</body>
+</html>

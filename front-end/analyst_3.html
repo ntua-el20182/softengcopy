@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Στατιστικά</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="analyst_4.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="analyst_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="analyst_1.html">Στατιστικά Διελεύσεων ανά Σταθμό</a></li>
+            <li><a href="analyst_2.html">Στατιστικά Πομποδεκτών</a></li>
+            <li><a href="analyst_3.html" class = 'active'>Στατιστικά Διελεύσεων ανά Λειτουργό</a></li>
+            <li><a href="analyst_4.html">Στατιστικά Διελεύσεων ανά Κατηγορία οχήματος</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <div class="stat-panel">
+            <button class="filter-cell" id="showFilters">Εφαρμογή Φίλτρου</button>
+            <div class="filter-dropdown">
+                <input type="text" id="dateRange" name="dateRange" placeholder="Επιλέξτε εύρος ημερομηνιών">
+                <button class="my-button" id="applyFilters">Εφαρμογή Φίλτρου</button>
+                <button class="my-button" id="clearFilters">Καθαρισμός</button>
+            </div>
+            <div id="chart1" class="chart"></div>
+        </div>
+    </div>
+
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/sankey.js"></script>
+    <script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+
+    <script>
+        function dependecy_wheel_chart(plot) {
+            const token = localStorage.getItem('authTokenLoc');
+            const customColors = [
+            '#5E81AC',  // Deep Steel Blue  
+            '#88C0D0',  // Soft Arctic Cyan  
+            '#EBCB8B',  // Warm Golden Sand  
+            '#A3BE8C',  // Muted Forest Green  
+            '#D08770',  // Elegant Coral  
+            '#B48EAD',  // Dusky Mauve  
+            '#9D79BC',  // Rich Amethyst  
+            '#E5E9F0'   // Misty Pearl White  
+            ];
+
+            Highcharts.setOptions({ colors: customColors });
+
+            fetch(plot.endpoint, {
+                method: 'GET',
+                headers: {
+                    'X-OBSERVATORY-AUTH': token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())  // Μετατρέπει την απόκριση σε JSON
+            .then(data => {
+                const chartData = data.map(item => [item[plot.column2], item[plot.column1], parseFloat(item[plot.column3])]);
+
+                // Δημιουργία του γραφήματος με τα δεδομένα
+                Highcharts.chart(`${plot.container}`, {
+                    title: { 
+                        text: `${plot.title}`,
+                        align: 'left' 
+                    },
+                    tooltip: {
+                        formatter: function() {
+                            let totalPasses = 0;
+                            if (this.point.from && this.point.to) {
+                                totalPasses = this.point.weight;
+                                return `<b>${this.point.from} → ${this.point.to}</b><br>Διελεύσεις: ${totalPasses}`;
+                            } else if (this.point.name) {
+                                totalPasses = this.series.data.reduce((sum, point) => {
+                                    if (point.from === this.point.name || point.to === this.point.name)
+                                        return sum + point.weight;
+                                    return sum;
+                                }, 0);
+
+                                return `<b>${this.point.name}</b><br>Συνολικές Διελεύσεις: ${totalPasses}`;
+                            }
+                            return '';
+                        }
+                    },
+                    series: [{
+                        keys: ["from", "to", "weight"],
+                        data: chartData,  // Ενημέρωση με τα δεδομένα από το API
+                        type: 'dependencywheel',
+                        name: `${plot.title}`,
+                        dataLabels: {
+                            color: '#333',
+                            textPath: {
+                                enabled: true,
+                                attributes: { dy: 5 }
+                            },
+                            distance: 10
+                        },
+                        size: '95%'
+                    }]
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            passes_plot = { endpoint: localStorage.getItem('baseURL') + '/passes_stat/default', container: "chart1", title: "Διελεύσεις για κάθε ζευγάρι Λειτουργών", column1: "toll_operator", column2: "tag_operator", column3: "num_passes" };
+            
+            dependecy_wheel_chart(passes_plot);
+        });
+    </script>
+
+    <script>
+        document.getElementById("showFilters").addEventListener("click", function() {
+            var dropdown = document.querySelector(".filter-dropdown");
+            console.log("Dropdown clicked"); // Ελέγχουμε αν το κλικ ανιχνεύεται
+            dropdown.classList.toggle("show");  // Ενεργοποιεί ή απενεργοποιεί την κλάση 'show'
+            console.log(dropdown.classList); // Ελέγχουμε τις κλάσεις του dropdown
+        });
+
+        // Ενεργοποίηση του Flatpickr για το πεδίο
+        flatpickr("#dateRange", {
+            mode: "range", // Ενεργοποιεί το εύρος ημερομηνιών
+            dateFormat: "Y-m-d", // Μορφή ημερομηνιών (π.χ. 2025-01-12)
+            locale: "el", // Ρυθμίσεις για ελληνικά, αν χρειάζεται
+        });
+
+        document.getElementById('applyFilters').addEventListener('click', () => {
+            const charts = document.querySelectorAll('.chart');
+            const nextChartBtn = document.getElementById('nextChartBtn');
+
+            currentChartIndex = 0;
+            // Αρχικά, κρύβουμε όλα τα charts
+            charts.forEach(chart => {
+                chart.style.display = 'none';
+            });
+
+            // Εμφανίζουμε το πρώτο chart
+            charts[currentChartIndex].style.display = 'block';
+
+            const dateRange = document.getElementById('dateRange').value.
+                                    split(" to ").map(date => date.replace(/-/g, "")).join("-") || "default";
+
+            passes_plot = { endpoint: localStorage.getItem('baseURL') + `/passes_stat/${dateRange}`, container: "chart1", title: "Διελεύσεις για κάθε ζευγάρι Λειτουργών", column1: "toll_operator", column2: "tag_operator", column3: "num_passes" };
+            
+            dependecy_wheel_chart(passes_plot);
+        });
+
+        // Clear function
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            document.getElementById('dateRange').value = '';
+        });
+    </script>
+
+    <script>
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+        
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const userData = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = userData.name;
+        document.getElementById('userEmail').textContent = userData.email;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script>  
+</body>
+</html>

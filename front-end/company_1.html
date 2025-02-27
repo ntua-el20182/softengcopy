@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Τρέχουσες Συναλλαγές</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="company_1.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="title">PouPass</div>
+        <ul>
+            <li><a href="company_home.html">Αρχική Σελίδα</a></li>
+            <li><a href="company_1.html" class="active">Τρέχουσες Συναλλαγές</a></li>
+            <li><a href="company_2.html">Ιστορικό Συναλλαγών</a></li>
+            <li><a href="company_3.html">Στατιστικά Συναλλαγών</a></li>
+        </ul>
+    </div>
+
+    <!-- Στρογγυλό εικονίδιο για την εμφάνιση του κουτιού χρήστη -->
+    <div class="user-icon" id="userIcon">
+        <img src="user_icon.png" alt="User Icon">
+    </div>
+
+    <!-- User info box (αρχικά κρυφό) -->
+    <div class="user-box" id="userBox">       
+        <div class="user-details">
+            <p id="userName">Τζόνι Μπόι</p>
+            <p id="userEmail">user@example.com</p>
+        </div>
+        <a href="login.html" class="logout-btn" id="logoutButton">Αποσύνδεση</a>
+    </div>
+
+    <div class="content">
+        <!-- Panel για τον πίνακα -->
+        <div class="table-panel">
+            <div class="table-title">Οφειλές</div>
+            <table class="table" id="table1">
+                <thead>
+                    <tr>
+                        <th>Πιστωτής</th>
+                        <th>Ποσό</th>
+                        <th>Ημερομηνία Δημιουργίας</th>
+                        <th>Επιλογή</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody">
+                </tbody>
+            </table>
+            <div class="table-title">Οφειλούμενα</div>
+            <table class="table" id="table2">
+                <thead>
+                    <tr>
+                        <th>Οφειλέτης</th>
+                        <th>Ποσό</th>
+                        <th>Ημερομηνία Δημιουργίας</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody">
+                </tbody>
+            </table>
+            <div class="table-title">Πληρωμές</div>
+            <table class="table" id="table3">
+                <thead>
+                    <tr>
+                        <th>Οφειλέτης</th>
+                        <th>Ποσό</th>
+                        <th>Ημερομηνία Δημιουργίας</th>
+                        <th>Ημερομηνία Πληρωμής</th>
+                        <th>Επιλογή</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody">
+                </tbody>
+            </table>
+            <div class="table-title">Πληρωτέα προς επιβεβαίωση</div>
+            <table class="table" id="table4">
+                <thead>
+                    <tr>
+                        <th>Πιστωτής</th>
+                        <th>Ποσό</th>
+                        <th>Ημερομηνία Δημιουργίας</th>
+                        <th>Ημερομηνία Πληρωμής</th>
+                    </tr>
+                </thead>
+                <tbody class="tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="pay_confirm.js"></script>
+
+    <script>
+        const logoutButton = document.getElementById('logoutButton');
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const token = sessionStorage.getItem('authToken');
+            fetch(localStorage.getItem('baseURL') + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-OBSERVATORY-AUTH': token
+                }
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Αποτυχία αποσύνδεσης');
+                }
+
+                // Καθαρίζουμε τα τοπικά tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authTokenLoc');
+                
+                // Ανακατεύθυνση στη σελίδα σύνδεσης
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Σφάλμα κατά την αποσύνδεση:', error);
+            });
+        });
+    </script>
+    
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+        const tables = document.querySelectorAll('.table'); // Επιλέγει όλους τους πίνακες με την κλάση 'table'
+            
+        tables.forEach(table => {
+            const rows = table.rows; // Επιλέγει όλες τις σειρές του πίνακα
+            const firstRow = rows[0]; // Επιλέγει την πρώτη σειρά (όλες οι σειρές θα έχουν τον ίδιο αριθμό στηλών)
+            const columnCount = firstRow.cells.length; // Μετράει τον αριθμό των στηλών στην πρώτη σειρά
+
+            if (columnCount === 4) {
+                // Εφαρμόζει το στυλ όταν υπάρχουν 4 στήλες
+                const lastColumnCells = table.querySelectorAll('td:last-child, th:last-child');
+                lastColumnCells.forEach(cell => {
+                    cell.style.width = '50px';
+                    cell.style.padding = '5px';
+                    cell.style.textAlign = 'center';
+                });
+            }
+        });
+    });
+
+        // JavaScript για την εμφάνιση/απόκρυψη του κουτιού χρήστη
+        const userIcon = document.getElementById('userIcon');
+        const userBox = document.getElementById('userBox');
+
+        // Εμφάνιση του κουτιού όταν πατάς το εικονίδιο
+        userIcon.addEventListener('click', () => {
+            if (userBox.style.display === 'none' || userBox.style.display === '') {
+                userBox.style.display = 'block'; // Εμφάνιση του κουτιού
+                userBox.style.animation = 'slideUp 0.5s forwards'; // Εφαρμογή animation εμφάνισης
+            } else {
+                userBox.style.animation = 'slideDown 0.5s forwards'; // Εφαρμογή animation εξαφάνισης
+                setTimeout(() => {
+                    userBox.style.display = 'none'; // Απόκρυψη του κουτιού μετά το animation
+                }, 500); // Περιμένει μέχρι να ολοκληρωθεί το animation
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll(".sidebar ul li a");
+            const currentPath = window.location.pathname;
+
+            links.forEach(link => {
+                if (link.href.includes(currentPath)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            });
+        });
+    </script>  
+    <script>
+        function base64UrlDecode(str) {
+            const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(base64);
+            const bytes = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+            return new TextDecoder().decode(bytes); // Σωστό UTF-8 decoding
+        }
+
+        const userData = JSON.parse(base64UrlDecode(sessionStorage.getItem('authToken').split('.')[1]));
+        document.getElementById('userName').textContent = userData.name;
+        document.getElementById('userEmail').textContent = userData.email;
+    </script>
+</body>
+</html>

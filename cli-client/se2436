@@ -1,0 +1,830 @@
+#!/usr/bin/env node
+
+/**
+ * Εκτελεί κλήσεις στο server (server.js) που τρέχει στο http://localhost:9115
+ */
+
+const { program } = require('commander');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const jwt = require('jsonwebtoken')
+
+// Ρύθμιση βάσης URL (αν ο server τρέχει αλλού, προσαρμόστε!)
+const BASE_URL = process.env.API_URL || 'http://localhost:9115/api';
+
+// Τοπικό αρχείο για αποθήκευση token
+const TOKEN_PATH = path.join(require('os').homedir(), '.se2436_token');
+
+/**
+ * Επιστρέφει (ή "" αν δεν υπάρχει) το token από το TOKEN_PATH
+ */
+function loadToken() {
+  try {
+    return fs.readFileSync(TOKEN_PATH, 'utf-8').trim();
+  } catch (error) {
+    return ""; // Αν δεν υπάρχει αρχείο ή δεν μπορεί να διαβαστεί
+  }
+}
+
+/**
+ * Αποθηκεύει το token σε αρχείο
+ */
+function saveToken(token) {
+  fs.writeFileSync(TOKEN_PATH, token, { encoding: 'utf-8' });
+}
+
+/**
+ * Διαγράφει το token (logout)
+ */
+function clearToken() {
+  if (fs.existsSync(TOKEN_PATH)) {
+    fs.unlinkSync(TOKEN_PATH);
+  }
+}
+
+/**
+ * Επιστρέφει το format ή 'csv' ως default (βάσει εκφώνησης CLI)
+ */
+function getFormatOrDefault(cmd) {
+  // Αν ο χρήστης έδωσε --format <csv|json>, το παίρνουμε, αλλιώς "csv".
+  return cmd.format || 'csv';
+}
+
+/**
+ * Πραγματοποιεί αίτημα με axios.
+ * Προσθέτει αυτόματα το X-OBSERVATORY-AUTH header αν υπάρχει token.
+ * Επιστρέφει { status, data } ή { status, error } σε περίπτωση σφάλματος
+ */
+async function doRequest({ method, url, data, params, headers, responseType }) {
+  const token = loadToken();
+  const finalHeaders = headers || {};
+  if (token) {
+    finalHeaders['X-OBSERVATORY-AUTH'] = token;
+  }
+  try {
+    const response = await axios({
+      method,
+      url,
+      baseURL: BASE_URL,
+      data,
+      params,
+      headers: finalHeaders,
+      responseType: responseType || 'json'
+    });
+    return { status: response.status, data: response.data };
+  } catch (err) {
+    if (err.response) {
+      return { status: err.response.status, error: err.response.data };
+    } else {
+      return { status: 500, error: err.message };
+    }
+  }
+}
+
+/**
+ * Εμφανίζει τα αποτελέσματα ή σφάλματα στο stdout
+ */
+function printResult(res) {
+  if (res.error) {
+    console.error(`Σφάλμα (status ${res.status}):`, res.error);
+  } else {
+    if (typeof res.data === 'object') {
+      console.log(JSON.stringify(res.data, null, 2));
+    } else {
+      console.log(res.data);
+    }
+  }
+}
+
+/**
+ * Τύπωσε μια συνοπτική βοήθεια
+ */
+function printHelp() {
+  console.log(`Διαθέσιμες εντολές CLI (se2436), π.χ.:
+
+  1) Login/logout:
+     se2436 login --username <user> --passw <pass>
+     se2436 logout
+
+  2) Διαχειριστικές (admin):
+     se2436 healthcheck
+     se2436 resetstations
+     se2436 resetpasses
+     se2436 addpasses --source <file.csv>
+
+     se2436 admin --usermod --username <u> --passw <p>
+       (Αλλαγή password χρήστη μέσω /admin/changePass)
+     se2436 admin --usermod --username <u> --activate <Y|N>
+       ((Απ)Ενεργοποίηση χρήστη μέσω /admin/de-activate)
+     se2436 admin --usermod --username <u> --passw <p> --role <r> --email <e> [--opId <opId>]
+       (Δημιουργία νέου χρήστη μέσω /admin/new_user)
+
+  3) Κεντρικές λειτουργίες:
+     se2436 tollstationpasses --station <ID> --from <YYYYMMDD> --to <YYYYMMDD> [--format csv|json]
+     se2436 passanalysis --stationop <OP1> --tagop <OP2> --from <YYYYMMDD> --to <YYYYMMDD> [--format ...]
+     se2436 passescost --stationop <OP1> --tagop <OP2> --from <YYYYMMDD> --to <YYYYMMDD> [--format ...]
+     se2436 chargesby --opid <OP> --from <YYYYMMDD> --to <YYYYMMDD> [--format ...]
+
+  4) Πληρωμές:
+     se2436 pay --charid <N>
+     se2436 confirm --charid <N>
+
+  5) Εμφάνιση οφειλών, ιστορικού, στατιστικών:
+     se2436 owing [--format csv|json]
+     se2436 owed [--format csv|json]
+     se2436 to_confirm [--format csv|json]
+     se2436 to_be_confirmed [--format csv|json]
+     se2436 history [--format csv|json]
+
+     se2436 history_filtered --type <all|from_me|to_me> --date_range <...> --s_amount <...> --e_amount <...> --stakeholders <...> [--format csv|json]
+
+     se2436 payment_delay --date_range <YYYYMMDD-YYYYMMDD|default> [--format]
+     se2436 debt_stat --type <from_me|to_me> --date_range <...> [--format]
+
+     se2436 max_debt
+     
+  6) Ειδικά στατιστικά διόδιων (single_toll*):
+     se2436 single_toll_per_cat --toll_pk <N> --name "<όνομα>" [--format ...]
+     se2436 single_toll_per_ops --toll_pk <N> --name "<όνομα>" [--format ...]
+     se2436 single_toll_charges --toll_pk <N> --name "<όνομα>" [--format ...]
+     se2436 single_toll_per_dest --toll_pk <N> --name "<όνομα>" [--format ...]
+     se2436 single_toll_per_hour --toll_pk <N> --name "<όνομα>" [--format ...]
+
+  --format csv|json (προεπιλογή: csv)
+`);
+}
+
+// ---------------------------------------------------------------------
+// Ορισμός εντολών με το commander
+// ---------------------------------------------------------------------
+
+program
+  .name('se2436')
+  .description('CLI Εφαρμογής Διοδίων')
+  .version('1.0.0')
+  .action(() => {
+    printHelp();
+  });
+
+// ----------------- Login / Logout -----------------------
+program
+  .command('login')
+  .description('Σύνδεση χρήστη (login). Αποθηκεύει token τοπικά.')
+  .requiredOption('--username <username>', 'Όνομα χρήστη')
+  .requiredOption('--passw <password>', 'Κωδικός χρήστη')
+  .action(async (cmd) => {
+    const { username, passw } = cmd;
+    const res = await doRequest({
+      method: 'POST',
+      url: '/login',
+      data: { username, password: passw }
+    });
+    if (!res.error && res.data && res.data.token && jwt.decode(res.data.token) && jwt.decode(res.data.token).active === 1) {
+      saveToken(res.data.token);
+      console.log('Επιτυχής σύνδεση! Αποθηκεύτηκε token.');
+    } else {
+      console.log('Η σύνδεση απέτυχε!');
+    }
+  });
+
+program
+  .command('logout')
+  .description('Αποσύνδεση χρήστη (logout). Διαγράφει το token τοπικά.')
+  .action(async () => {
+    const res = await doRequest({
+      method: 'POST',
+      url: '/logout'
+    });
+    if (!res.error) {
+      clearToken();
+      console.log('Επιτυχής αποσύνδεση! Τοπικό token διαγράφηκε.');
+    } else {
+      printResult(res);
+    }
+  });
+
+// ----------------- Admin -----------------------
+program
+  .command('healthcheck')
+  .description('GET /api/admin/healthcheck (admin)')
+  .option('--format <fmt>', 'Μορφή απόκρισης')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/admin/healthcheck',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('resetstations')
+  .description('POST /api/admin/resetstations (admin).')
+  .option('--format <fmt>', 'Μορφή απόκρισης')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'POST',
+      url: '/admin/resetstations',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('resetpasses')
+  .description('POST /api/admin/resetpasses (admin).')
+  .option('--format <fmt>', 'Μορφή απόκρισης')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'POST',
+      url: '/admin/resetpasses',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('addpasses')
+  .description('Προσθήκη διελεύσεων από CSV (multipart/form-data) /api/admin/addpasses')
+  .requiredOption('--source <file>', 'CSV αρχείο διελεύσεων')
+  .action(async (cmd) => {
+    const filePath = path.resolve(cmd.source);
+    if (!fs.existsSync(filePath)) {
+      return console.error(`Σφάλμα: Το αρχείο "${filePath}" δεν υπάρχει!`);
+    }
+    if (path.extname(filePath).toLowerCase() !== '.csv') {
+      console.error('Σφάλμα: Το αρχείο πρέπει να είναι τύπου CSV.');
+    }
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', fs.createReadStream(filePath));
+
+    const res = await doRequest({
+      method: 'POST',
+      url: '/admin/addpasses',
+      data: form,
+      headers: form.getHeaders()
+    });
+    printResult(res);
+  });
+
+
+
+  program
+  .command('admin')
+  .description('GET /api/admin')
+  .option('--users') // 
+  .option('--usermod') //Δημιουργία ή αλλαγή password χρήστη
+  .option('--username <u>', 'Username')
+  .option('--activate <a>', 'Ενεργοποίησε τον λογαριασμό ή όχι <Y|N>')
+  .option('--passw <p>', 'New password')
+  .option('--name <r>', 'Ονοματεπώνυμο χρήστη')
+  .option('--role <r>', 'π.χ. admin/op_user/simple_user κ.λπ.')
+  .option('--email <e>', 'Email χρήστη')
+  .option('--opId <opId>', 'operator ID (αν role="op_user")')
+  .option('--addpasses') //Προσθήκη διελεύσεων από CSV αρχείο
+  .option('--source <file>')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    if (cmd.users) {
+      const res = await doRequest({
+        method: 'GET',
+        url: `/admin/allUsers`,
+        params: { format }
+      });
+      printResult(res);
+    }
+
+    if (cmd.usermod) {
+      const username = cmd.username;
+
+      if (cmd.activate) {
+        const status = cmd.activate;
+        if (status != 'Y' && status != 'N' && !username) {
+          console.error('error');
+          return;
+        }
+
+        const res = await doRequest({
+          method: 'POST',
+          url: '/admin/de-activate',
+          data: { username, status }
+        });
+
+        if (res.error || res.status === 204) {
+          console.error('error');
+        } else {
+          console.log('success');
+        }
+        return;
+      }
+
+      const password = cmd.passw;
+      if (!username || !password) {
+        console.error('error');
+        return;
+      }
+
+      if (!cmd.role) {
+        const res = await doRequest({
+          method: 'POST',
+          url: '/admin/changePass',
+          data: { username, password }
+        });
+
+        if (res.error || res.status === 204) {
+          console.error('error');
+        } else {
+          console.log('success');
+        }
+      } else {
+        const validRoles = new Set(["op_user", "data_analyst", "admin"]);
+        const validOpIds = new Set(["NAO", "OO", "EG", "NO", "KO", "MO", "GE", "AM"]);
+        if (!cmd.name) { console.log('Απαιτείται το όνοματεπώνυμο του χρήστη!'); return; }
+        if (!validRoles.has(cmd.role)) { console.log('Ο χρήστης πρέπει να έχει έγκυρο ρόλο!'); return; }
+        if (!cmd.email) { console.log('Απαιτείται το email του χρήστη!'); return; }
+        if (cmd.role == "op_user" && !validOpIds.has(cmd.opId)) { console.log('Ο χρήστης λειτουργού πρέπει να ανήκει σε μια εταιρία!'); return; }
+        
+        const OpIdToPK = { NAO: 1, OO: 2, EG: 3, NO: 4, KO: 5, MO: 6, GE: 7, AM: 8 };
+        const body = {
+          name: cmd.name,
+          username: username,
+          password: password,
+          role: cmd.role,
+          email: cmd.email,
+          op_primaryKey: OpIdToPK[cmd.opId] || null
+        };
+
+        const res = await doRequest({
+          method: 'POST',
+          url: '/admin/new_user',
+          data: body
+        });
+
+        if (res.error) {
+          console.error('error');
+        } else {
+          console.log('success');
+        }
+      }
+      return;
+    }
+
+    if (cmd.addpasses) {
+      // Χρειαζόμαστε το αρχείο CSV
+      const filePath = cmd.source;
+      if (!filePath) {
+        console.error('Σφάλμα: Απαιτείται --source <file> μαζί με --addpasses!');
+        return;
+      }
+
+      // Εντοπίζουμε αν υπάρχει το αρχείο
+      const fs = require('fs');
+      if (!fs.existsSync(filePath)) {
+        console.error(`Σφάλμα: Το αρχείο "${filePath}" δεν υπάρχει!`);
+        return;
+      }
+
+      // Χρειαζόμαστε FormData για multipart/form-data
+      const FormData = require('form-data');
+      const form = new FormData();
+      // Το key πρέπει να είναι ίδιο με αυτό που περιμένει ο server (π.χ. 'file')
+      form.append('file', fs.createReadStream(filePath));
+
+      // Κάνουμε το αίτημα στο /admin/addPasses
+      const res = await doRequest({
+        method: 'POST',
+        url: '/admin/addPasses',
+        data: form,
+        headers: form.getHeaders() // απαραίτητο για multipart
+      });
+
+      if (res.error) {
+        console.error(`Σφάλμα (status ${res.status}):`, res.error);
+      } else {
+        console.log('Αποτέλεσμα:', res.data);
+      }
+      return;
+    }
+  });    
+  
+
+
+// ----------------- Κεντρικές λειτουργίες -----------------------
+program
+  .command('tollstationpasses')
+  .description('GET /api/tollStationPasses/<station>/<from>/<to>')
+  .requiredOption('--station <ID>', 'π.χ. NAO01')
+  .requiredOption('--from <YYYYMMDD>', 'π.χ. 20240101')
+  .requiredOption('--to <YYYYMMDD>', 'π.χ. 20240131')
+  .option('--format <fmt>', 'csv ή json')
+  .action(async (cmd) => {
+    const station = cmd.station;
+    const dateFrom = cmd.from;
+    const dateTo = cmd.to;
+    // Αν δεν δώσεις format, ας θεωρήσουμε ότι default το θέλουμε csv ή json
+    const format = cmd.format || 'csv'; 
+
+    // Στέλνουμε αίτημα GET /api/tollStationPasses/station/dateFrom/dateTo?format=...
+    const res = await doRequest({
+      method: 'GET',
+      url: `/tollStationPasses/${station}/${dateFrom}/${dateTo}`,
+      params: { format }
+    });
+
+    if (res.error) {
+      console.error(`Σφάλμα (status ${res.status}):`, res.error);
+    } else {
+      // Εκτύπωση αποτελέσματος
+      if (format === 'csv') {
+        // Εδώ μάλλον θα έρθει σε text/csv
+        // οπότε το res.data πιθανόν είναι string CSV. Απλά το τυπώνουμε
+        console.log(res.data);
+      } else {
+        // JSON, το res.data είναι object
+        console.log(JSON.stringify(res.data, null, 2));
+      }
+    }
+  });
+
+  program
+  .command('passanalysis')
+  .description('GET /api/passAnalysis/<stationOpID>/<tagOpID>/<from>/<to>')
+  .requiredOption('--stationop <op1>', 'π.χ. NAO')
+  .requiredOption('--tagop <op2>', 'π.χ. NO')
+  .requiredOption('--from <dateFrom>', 'π.χ. 20240101')
+  .requiredOption('--to <dateTo>', 'π.χ. 20240131')
+  .option('--format <fmt>', 'csv ή json (default json)')
+  .action(async (cmd) => {
+    const stationOpID = cmd.stationop;
+    const tagOpID = cmd.tagop;
+    const dateFrom = cmd.from;
+    const dateTo = cmd.to;
+    const format = cmd.format || 'csv';
+
+    // Κάνουμε GET στο /api/passAnalysis/stationOpID/tagOpID/dateFrom/dateTo?format=...
+    const res = await doRequest({
+      method: 'GET',
+      url: `/passAnalysis/${stationOpID}/${tagOpID}/${dateFrom}/${dateTo}`,
+      params: { format } 
+      // ή params: format ? { format } : {}
+    });
+
+    // Έλεγχος αποτελέσματος
+    if (res.error) {
+      console.error(`Σφάλμα (status ${res.status}):`, res.error);
+    } else {
+      // Σε περίπτωση csv, res.data θα είναι string
+      // Σε περίπτωση json, res.data θα είναι object
+      if (format === 'csv') {
+        console.log(res.data);
+      } else {
+        console.log(JSON.stringify(res.data, null, 2));
+      }
+    }
+  });
+
+program
+  .command('passescost')
+  .description('GET /api/passesCost/<tollOpID>/<tagOpID>/<from>/<to>')
+  .requiredOption('--stationop <op>', 'π.χ. NAO')
+  .requiredOption('--tagop <op>', 'π.χ. NO')
+  .requiredOption('--from <YYYYMMDD>', '')
+  .requiredOption('--to <YYYYMMDD>', '')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = cmd.format || 'csv';
+    const stationop = cmd.stationop;
+    const tagop = cmd.tagop;
+    const from = cmd.from;
+    const to = cmd.to;
+
+    const res = await doRequest({
+      method: 'GET',
+      url: `/passesCost/${stationop}/${tagop}/${from}/${to}`,
+      params: { format }
+    });
+
+    if (res.error) {
+      console.error(`Σφάλμα (status ${res.status}):`, res.error);
+    } else {
+      // Εκτύπωση αποτελέσματος
+      if (format === 'csv') {
+        // Εδώ μάλλον θα έρθει σε text/csv
+        // οπότε το res.data πιθανόν είναι string CSV. Απλά το τυπώνουμε
+        console.log(res.data);
+      } else {
+        // JSON, το res.data είναι object
+        console.log(JSON.stringify(res.data, null, 2));
+      }
+    }
+  });
+
+program
+  .command('chargesby')
+  .description('GET /api/chargesBy/<opID>/<from>/<to>')
+  .requiredOption('--opid <op>', 'π.χ. NAO')
+  .requiredOption('--from <YYYYMMDD>', '')
+  .requiredOption('--to <YYYYMMDD>', '')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = cmd.format || 'csv';
+    const opid = cmd.opid;
+    const from = cmd.from;
+    const to = cmd.to;
+
+    const res = await doRequest({
+      method: 'GET',
+      url: `/chargesBy/${opid}/${from}/${to}`,
+      params: { format }
+    });
+
+    if (res.error) {
+      console.error(`Σφάλμα (status ${res.status}):`, res.error);
+    } else {
+      // Εκτύπωση αποτελέσματος
+      if (format === 'csv') {
+        // Εδώ μάλλον θα έρθει σε text/csv
+        // οπότε το res.data πιθανόν είναι string CSV. Απλά το τυπώνουμε
+        console.log(res.data);
+      } else {
+        // JSON, το res.data είναι object
+        console.log(JSON.stringify(res.data, null, 2));
+      }
+    }
+  });
+
+// ----------------- Πληρωμές (pay, confirm) -----------------------
+program
+  .command('pay')
+  .description('POST /api/pay --charid <N>, πληρωμή οφειλής (status=owed)')
+  .requiredOption('--charid <id>', 'Το ID χρέωσης που πληρώνεται')
+  .action(async (cmd) => {
+    const res = await doRequest({
+      method: 'POST',
+      url: '/pay',
+      data: { char_id: cmd.charid }
+    });
+    printResult(res);
+  });
+
+program
+  .command('confirm')
+  .description('POST /api/confirm --charid <N>, επιβεβαίωση πληρωμής (status=paid)')
+  .requiredOption('--charid <id>', 'Το ID χρέωσης που επιβεβαιώνεται')
+  .action(async (cmd) => {
+    const res = await doRequest({
+      method: 'POST',
+      url: '/confirm',
+      data: { char_id: cmd.charid }
+    });
+    printResult(res);
+  });
+
+// ----------------- Οφειλές, ιστορικό, στατιστικά εταιριών -----------------------
+program
+  .command('owing')
+  .description('GET /api/owing (τρέχουσες οφειλές μου προς άλλους)')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/owing',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('owed')
+  .description('GET /api/owed (τρέχουσες οφειλές άλλων προς εμένα)')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/owed',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('to_confirm')
+  .description('GET /api/to_confirm (οι πληρωμές μου σε κατάσταση paid, αναμένοντας confirm από εμένα)')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/to_confirm',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('to_be_confirmed')
+  .description('GET /api/to_be_confirmed (οι πληρωμές που άλλοι μού έκαναν, σε κατάσταση paid)')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/to_be_confirmed',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('history')
+  .description('GET /api/history (ιστορικό συναλλαγών μου με status=confirmed)')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const res = await doRequest({
+      method: 'GET',
+      url: '/history',
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('history_filtered')
+  .description('GET /api/history_filtered/<type>/<date_range>/<s_amount>/<e_amount>/<stakeholders>')
+  .requiredOption('--type <t>', 'all|from_me|to_me')
+  .requiredOption('--date_range <dr>', 'YYYYMMDD-YYYYMMDD ή all κλπ.')
+  .requiredOption('--s_amount <sa>', 'ελάχιστο ποσό')
+  .requiredOption('--e_amount <ea>', 'μέγιστο ποσό')
+  .requiredOption('--stakeholders <lst>', 'csv μορφή, π.χ. 1,2,3')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const url = `/history_filtered/${cmd.type}/${cmd.date_range}/${cmd.s_amount}/${cmd.e_amount}/${cmd.stakeholders}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('payment_delay')
+  .description('GET /api/payment_delay/<date_range>')
+  .requiredOption('--date_range <dr>', 'π.χ. 20240101-20240131 ή default')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const url = `/payment_delay/${cmd.date_range}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('debt_stat')
+  .description('GET /api/debt_stat/<type>/<date_range>, where type=from_me|to_me')
+  .requiredOption('--type <t>', 'from_me ή to_me')
+  .requiredOption('--date_range <dr>', 'YYYYMMDD-YYYYMMDD ή all')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const url = `/debt_stat/${cmd.type}/${cmd.date_range}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('max_debt')
+  .description('GET /api/max_debt (μέγιστη επιβεβαιωμένη οφειλή σε συναλλαγές μου)')
+  .action(async () => {
+    const res = await doRequest({
+      method: 'GET',
+      url: '/max_debt'
+    });
+    printResult(res);
+  });
+
+// ----------------- Ειδικές ρουτες toll (single_toll_*) -----------------------
+program
+  .command('single_toll_per_cat')
+  .description('GET /api/single_toll_per_cat/{toll_pk}/{name}')
+  .requiredOption('--toll_pk <n>', 'π.χ. 7')
+  .requiredOption('--name <nm>', 'Όνομα διοδίου (π.χ. "Αντίρριο Μετωπικά")')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const encodedName = encodeURIComponent(cmd.name);
+    const url = `/single_toll_per_cat/${cmd.toll_pk}/${encodedName}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('single_toll_per_ops')
+  .description('GET /api/single_toll_per_ops/{toll_pk}/{name}')
+  .requiredOption('--toll_pk <n>', 'primary key')
+  .requiredOption('--name <nm>', 'όνομα διοδίου')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const encodedName = encodeURIComponent(cmd.name);
+    const url = `/single_toll_per_ops/${cmd.toll_pk}/${encodedName}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('single_toll_charges')
+  .description('GET /api/single_toll_charges/{toll_pk}/{name}')
+  .requiredOption('--toll_pk <n>', '')
+  .requiredOption('--name <nm>', '')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const encodedName = encodeURIComponent(cmd.name);
+    const url = `/single_toll_charges/${cmd.toll_pk}/${encodedName}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('single_toll_per_dest')
+  .description('GET /api/single_toll_per_dest/{toll_pk}/{name}')
+  .requiredOption('--toll_pk <n>', '')
+  .requiredOption('--name <nm>', '')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const encodedName = encodeURIComponent(cmd.name);
+    const url = `/single_toll_per_dest/${cmd.toll_pk}/${encodedName}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .command('single_toll_per_hour')
+  .description('GET /api/single_toll_per_hour/{toll_pk}/{name}')
+  .requiredOption('--toll_pk <n>', '')
+  .requiredOption('--name <nm>', '')
+  .option('--format <fmt>')
+  .action(async (cmd) => {
+    const format = getFormatOrDefault(cmd);
+    const encodedName = encodeURIComponent(cmd.name);
+    const url = `/single_toll_per_hour/${cmd.toll_pk}/${encodedName}`;
+    const res = await doRequest({
+      method: 'GET',
+      url,
+      params: { format }
+    });
+    printResult(res);
+  });
+
+program
+  .arguments('<command>')
+  .description('Άγνωστη εντολή')
+  .action((cmd) => {
+    console.error(`Σφάλμα: Η εντολή "${cmd}" δεν είναι έγκυρη.`);
+    printHelp(); // Εμφάνιση διαθέσιμων εντολών
+    process.exit(1);
+  });
+
+// -----------------------------------------------------------
+program.parse(process.argv);
+
+// Αν δεν δόθηκε καθόλου εντολή, εμφανίζουμε βοήθεια
+if (!process.argv.slice(2).length) {
+  printHelp();
+}

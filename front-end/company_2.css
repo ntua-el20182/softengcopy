@@ -1,0 +1,526 @@
+/* styles.css */
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+    background-color: #f0f4f8; /* Απαλό γαλάζιο φόντο */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Εικόνα φόντου με θολώμα */
+body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('background.png'); /* Αντικατέστησε με την εικόνα σου */
+    background-size: cover;
+    background-position: center;
+    filter: blur(8px); /* Θολώνουμε την εικόνα */
+    z-index: -1; /* Τοποθετούμε την εικόνα πίσω από το περιεχόμενο */
+}
+
+/* Sidebar */
+.sidebar {
+    width: 200px;
+    background-color: rgba(36, 60, 105, 0.8); /* Σκούρο μπλε φόντο */
+    padding-top: 20px;
+    position: fixed;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Για να τοποθετήσουμε το logout στο κάτω μέρος */
+}
+
+/* PouPass title */
+.sidebar .title {
+    font-family: 'Montserrat';
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 0 10px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.sidebar ul li a {
+    display: block;
+    text-decoration: none;
+    color: white;
+    font-size: 1.1rem;
+    padding: 12px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.sidebar ul li a:hover {
+    background-color: #1a175f; /* Ανοιχτό μπλε χρώμα κατά το hover */
+}
+
+/* Ενεργή επιλογή - ξεχωρίζει */
+.sidebar ul li a.active {
+    background-color: #1a175f; /* Σκούρο μπλε */
+    color: #ffffff;
+    pointer-events: none; /* Απενεργοποιεί το click */
+    cursor: default; /* Δείχνει ότι δεν είναι clickable */
+    opacity: 0.7; /* Ελαφρώς διαφανές */
+}
+
+
+/* Main content */
+.content {
+    margin-left: 220px; /* Αφήνει χώρο για το sidebar */
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Ευθυγραμμίζει τα στοιχεία αριστερά */
+}
+
+
+/* Panel που περιβάλλει τον πίνακα */
+.table-panel {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 100%;
+    max-width: 100%;
+    height: 540px;
+    overflow: auto;
+    box-sizing: border-box;
+    margin-left: -10px;
+    animation: fadeIn 0.5s ease-in forwards;
+    position: relative;
+}
+
+/* Στυλ για τον πίνακα */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem; /* Μείωση του μεγέθους της γραμματοσειράς */
+    margin-bottom: 20px; /* Απόσταση κάτω από τον πίνακα */
+    margin-top: 10px;
+
+}
+
+.table th, .table td {
+    padding: 2px 5px; /* Μειώστε το padding για μικρότερο πίνακα */
+    text-align: left;
+    border: 1px solid #cbcbd6;
+    line-height: 1.2; /* Μειώστε το ύψος γραμμής για πιο πυκνό περιεχόμενο */
+}
+
+.table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+.table tr:nth-child(even) {
+    background-color: transparent;
+}
+
+/* Στρογγυλεμένες γωνίες για τα κελιά του πίνακα */
+.table td, .table th {
+    border-radius: 5px;
+}
+
+
+/* User Info Box */
+.user-box {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    width: 280px;
+    text-align: center;
+    color: #333;
+    z-index: 1;
+    display: none; /* Αρχικά είναι κρυφό */
+    opacity: 0;
+    transform: translateY(30px); /* Ξεκινά με μετακίνηση προς τα κάτω */
+    animation: slideUp 0.5s forwards;
+}
+
+
+/* Animation για την εμφάνιση του κουτιού */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px); /* Ξεκινάει κάτω από τη θέση του */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0); /* Καταλήγει στην τελική του θέση */
+    }
+}
+
+/* Animation για την εξαφάνιση του κουτιού */
+@keyframes slideDown {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(30px); /* Μετακίνηση προς τα κάτω */
+    }
+}
+
+
+/* Στρογγυλό εικονίδιο */
+.user-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.9); /* Μπλε φόντο */
+    cursor: pointer;
+    position: fixed; /* Σταθερή τοποθέτηση στη σελίδα */
+    top: 75px; /* Απόσταση από την κορυφή */
+    left: 65px; /* Απόσταση από τη δεξιά πλευρά */
+    z-index: 2; /* Διασφαλίζει ότι το εικονίδιο είναι πάνω από άλλες περιοχές */
+}
+
+/* Εικονίδιο μέσα στο κουτί */
+.user-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* User details */
+.user-details {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    line-height: 1.6;
+}
+/* Logout Button */
+.logout-btn {
+    background-color: #1b3580;
+    color: white;
+    padding: 12px 25px;
+    text-align: center;
+    border-radius: 25px;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3);
+}
+
+.logout-btn:hover {
+    background-color: #0a2342;
+    box-shadow: 0 6px 15px rgba(10, 39, 77, 0.5);
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Στυλ για το αναδυόμενο μενού φίλτρων */
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    background-color: rgb(255, 255, 255);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    top: 65px; /* Μετακίνηση προς τα πάνω */
+    left: 7px;
+    z-index: 9999;
+    max-width: 270px; /* Αυξάνουμε το πλάτος για να χωράει το ημερολόγιο */
+    padding: 15px;
+}
+
+
+.filter-dropdown.show {
+    display: block;  /* Όταν έχει την κλάση show, εμφανίζεται */
+}
+
+.filter-dropdown select {
+    width: 90%;
+    padding: 8px;
+    font-size: 16px;
+    font-family: sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    appearance: none; 
+    outline: none;
+}
+
+/* Στυλ για τα πεδία ημερομηνίας */
+.filter-dropdown input[type="date"] {
+    width: 90%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    font-family: 'Montserrat', sans-serif;
+    background-color: #f9f9f9;
+}
+  
+
+/* Στυλ για τα φίλτρα (inputs) */
+.filter-dropdown input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+
+.filter-cell {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    padding: 12px;
+    background-color: #f1f1f1;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.filter-cell:hover {
+    background-color: #e0e0e0;
+}
+
+/* Στυλ για το label των φίλτρων */
+.filter-dropdown label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Στυλ για το placeholder στα πεδία εισαγωγής */
+.filter-dropdown input[type="date"]::placeholder {
+    color: #888;
+}
+
+.filter-dropdown button {
+    width: 100%;
+    padding: 5px;
+    background-color: #1b3580;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.filter-dropdown button:hover {
+    background-color: #0a2342;
+    box-shadow: 0 6px 15px rgba(10, 39, 77, 0.5);
+    transform: translateY(-2px);
+}
+
+#category-filter option:disabled {
+    color: #888;  /* Χρώμα για να είναι πιο αχνό */
+}
+
+/* Στυλ για την επιλογή ημερών */
+#dateRange {
+    width: 233px; 
+    padding: 5px; 
+    border-radius: 5px; 
+    border: 1px solid #ccc;
+    margin-top: 5px;
+    color: #888;
+}
+
+/* Στυλ για το range */
+.range-slider-container {
+    width: 100%; /* Μπορείς να το κάνεις responsive */
+    max-width: 300px; /* Περιορισμός του πλάτους */
+    margin-top: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+    position: relative; /* Για τη σωστή θέση του track */
+}
+  
+.slider-values {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+  
+.value-min, .value-max {
+    font-size: 14px;
+    color: #333;
+}
+  
+.bar {
+    width: 10px;
+    background-color: #ddd;
+    margin: 0 2px;
+}
+  
+.range-slider {
+    position: relative;
+    width: 100%;
+    height: 20px; /* Ύψος του slider container */
+}
+  
+.range-slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    position: absolute;
+    top: -40%;
+    left: -10px;
+    right: 0;
+    pointer-events: none; /* Για να αποτρέψεις άμεση αλληλεπίδραση με το slider */
+}
+  
+.range-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #333;
+    border-radius: 50%;
+    pointer-events: auto; /* Επιτρέπεται η αλληλεπίδραση */
+    position: relative;
+    z-index: 3;
+}
+  
+.range-slider input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #333;
+    border-radius: 50%;
+    pointer-events: auto;
+    position: relative;
+    z-index: 3;
+}
+  
+.range-slider input[type="range"]:focus {
+    outline: none;
+}
+  
+.range-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #ccc;
+    transform: translateY(-50%);
+    z-index: 1;
+}
+  
+.range-track::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #333;
+    z-index: 2;
+}
+
+/* Γενικό στυλ για το φόρμα */
+.checkbox-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Απόσταση μεταξύ των checkboxes */
+    padding: 10px;
+    width: 250px; /* Μπορείς να προσαρμόσεις το πλάτος όπως θέλεις */
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.checkbox-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px; /* Μειώσαμε το κενό ανάμεσα στις σειρές */
+}
+
+/* Στυλ για κάθε checkbox group */
+.checkbox-group {
+    display: flex;
+    align-items: center; /* Ευθυγράμμιση του κειμένου και του checkbox */
+    margin-right: 2px;
+}
+
+/* Στυλ για τα labels */
+.checkbox-group label {
+    display: inline-block; /* Κάνει το label να συμπεριφέρεται σαν κουτί */
+    font-size: 12px; /* Αρχικό μέγεθος γραμματοσειράς */
+    margin-right: 2px; /* Απόσταση μεταξύ του label και του checkbox */
+    color: #333;
+    width: 110px; /* Σταθερό πλάτος σε pixel */
+    text-align: left; /* Ευθυγράμμιση του κειμένου (left, center, right) */
+    overflow: hidden; /* Κρύβει ό,τι περισσεύει */
+    text-overflow: ellipsis; /* Προσθέτει "..." αν το κείμενο είναι πολύ μεγάλο */
+    white-space: nowrap; /* Αποτρέπει το σπάσιμο του κειμένου σε πολλές γραμμές */
+}
+
+/* Στυλ για τα checkboxes */
+.checkbox-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* Εμφάνιση hover για το checkbox */
+.checkbox-group input[type="checkbox"]:hover {
+    background-color: #e0e0e0;
+}  
+
+.download-section {
+    margin-top: 20px;
+    text-align: right;
+    font-size: 1rem;
+    color: #333;
+}
+
+.download-section .download-link {
+    color: blue;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+.download-section .download-link:hover {
+    color: darkblue;
+    text-decoration: none;
+}
